@@ -4,11 +4,10 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const generateNewsArticle = async (topic: string, matchDetails?: string): Promise<{ title: string; content: string; summary: string }> => {
   if (!process.env.API_KEY) {
-    // Fallback mock for news if no API key
     return {
         title: "Resumen de la Jornada (Modo Demo)",
-        summary: "No se detectó una API Key. Este es un contenido de ejemplo.",
-        content: "Para generar noticias reales con inteligencia artificial, necesitas configurar tu API KEY de Google Gemini. Mientras tanto, la aplicación funcionará en modo demostración. Puedes seguir navegando, ver partidos y gestionar equipos sin problemas. \n\nPara activar la IA, edita el archivo services/geminiService.ts y pega tu clave."
+        summary: "No se detectó una API Key configurada.",
+        content: "Para generar noticias reales con inteligencia artificial, necesitas configurar tu API KEY de Google Gemini en el archivo index.html. \n\nMientras tanto, la aplicación funcionará en modo demostración."
     };
   }
 
@@ -40,13 +39,17 @@ export const generateNewsArticle = async (topic: string, matchDetails?: string):
     return JSON.parse(text);
   } catch (error) {
     console.error("Error generating news:", error);
-    throw error;
+    return {
+        title: "Error generando noticia",
+        summary: "Hubo un problema al conectar con la IA.",
+        content: "Por favor verifica tu conexión a internet y que tu API Key sea válida."
+    };
   }
 };
 
 export const generateMatchStrategy = async (teamName: string, opponentName: string): Promise<string> => {
     if (!process.env.API_KEY) {
-        return "Configura la API Key para recibir consejos tácticos.";
+        return "Configura la API Key en index.html para recibir consejos tácticos reales. (Modo Demo: Juega 6-0 en defensa y corre el contraataque).";
     }
 
     const prompt = `
@@ -70,63 +73,34 @@ export const generateMatchStrategy = async (teamName: string, opponentName: stri
 export const analyzeMatchSheet = async (fileBase64: string): Promise<any> => {
   if (!process.env.API_KEY) {
     console.warn("API Key not configured. Returning mock data based on example sheet.");
-    // Return mock data based on the specific example provided by the user (Comunicaciones vs GEI)
     return new Promise(resolve => setTimeout(() => resolve({
         homeTeam: "Club Comunicaciones B",
         awayTeam: "G.E.I.",
         homeScore: 23,
         awayScore: 25,
         players: [
-            { name: "Pinto Junior, Severino Roberto", team: "HOME", dorsal: 10, goals: 6 },
+            { name: "Pinto Junior, Severino", team: "HOME", dorsal: 10, goals: 6 },
             { name: "Flores, Juan Ignacio", team: "HOME", dorsal: 17, goals: 6 },
             { name: "Riadigos, Santiago", team: "HOME", dorsal: 31, goals: 8 },
-            { name: "Raimundi Casado, Xoan", team: "HOME", dorsal: 33, goals: 3 },
             { name: "Costa, Federico", team: "AWAY", dorsal: 3, goals: 9 },
-            { name: "Notaro, Agustin Ezequiel", team: "AWAY", dorsal: 20, goals: 4 },
-            { name: "Elizari Bellon, Xabier", team: "AWAY", dorsal: 51, goals: 4 },
-            { name: "Sirtautas, Nicolas Gabriel", team: "AWAY", dorsal: 68, goals: 2 },
+            { name: "Notaro, Agustin", team: "AWAY", dorsal: 20, goals: 4 },
         ]
     }), 1500));
   }
 
   // Extract mimeType and base64 data correctly
-  // Format usually: data:image/jpeg;base64,/9j/4AA... or data:application/pdf;base64,JVBER...
   const matches = fileBase64.match(/^data:(.+);base64,(.+)$/);
   
   if (!matches || matches.length !== 3) {
       throw new Error("Formato de archivo inválido. Se espera una cadena Base64 válida.");
   }
 
-  const mimeType = matches[1]; // e.g., 'image/jpeg' or 'application/pdf'
+  const mimeType = matches[1]; 
   const base64Data = matches[2];
 
   const prompt = `
-    Analiza este documento (planilla de partido de Handball estilo oficial). Puede ser una imagen o un PDF.
-    
-    Busca específicamente:
-    1. Encabezado: Equipos ("Local" vs "Visitante") y Resultado Final (Goles).
-    2. Tablas de jugadores:
-       - Columna "Nº" corresponde al dorsal.
-       - Columna "Local" o "Visitante" corresponde al Nombre.
-       - Columna "G" corresponde a los Goles.
-       - Si en "G" hay un guión "-" o está vacío, significa 0 goles.
-    
-    Devuelve la respuesta estrictamente en formato JSON:
-    {
-      "homeTeam": "Nombre del equipo local",
-      "awayTeam": "Nombre del equipo visitante",
-      "homeScore": 0, // Número
-      "awayScore": 0, // Número
-      "players": [
-         // Lista SOLO los jugadores que hayan marcado al menos 1 gol
-         { 
-           "name": "Nombre", 
-           "team": "HOME" | "AWAY", 
-           "dorsal": 10, 
-           "goals": 5 
-         }
-      ]
-    }
+    Analiza este documento (planilla de partido de Handball).
+    Devuelve un JSON con: homeTeam, awayTeam, homeScore, awayScore, y una lista de players (name, team, dorsal, goals).
   `;
 
   try {
@@ -155,23 +129,22 @@ export const analyzeMatchSheet = async (fileBase64: string): Promise<any> => {
 
 export const generateHandballImage = async (): Promise<string> => {
   if (!process.env.API_KEY) {
-     throw new Error("API Key requerida para generar imágenes.");
+     return "https://images.unsplash.com/photo-1516475429286-465d815a0df4?q=80&w=2070&auto=format&fit=crop";
   }
 
   try {
-    // Using gemini-2.5-flash-image for standard generation
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
         parts: [
           { 
-            text: 'A hyper-realistic, cinematic wide shot of a professional handball match in an indoor stadium in Argentina. Intense action, a player in a blue and green jersey jumping high to throw the ball. Dramatic lighting, blurred crowd in background, high resolution, 4k, sports photography.' 
+            text: 'A hyper-realistic, cinematic wide shot of a professional handball match in an indoor stadium in Argentina. Intense action, blue vs green jersey.' 
           },
         ],
       },
       config: {
         imageConfig: {
-           aspectRatio: "16:9" // Wide for hero section
+           aspectRatio: "16:9" 
         }
       }
     });
@@ -188,6 +161,6 @@ export const generateHandballImage = async (): Promise<string> => {
     throw new Error("No image generated.");
   } catch (error) {
     console.error("Error generating image:", error);
-    throw error;
+    return "https://images.unsplash.com/photo-1516475429286-465d815a0df4?q=80&w=2070&auto=format&fit=crop";
   }
 };
